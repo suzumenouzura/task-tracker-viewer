@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Tracking Viewer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121933;
+      --panel-2: #182145;
+      --text: #eef2ff;
+      --muted: #b9c2e3;
+      --accent: #88a7ff;
+      --accent-2: #a7f3d0;
+      --danger: #fca5a5;
+      --line: #2a376f;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #09101f 0%, #0e1730 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .top {
+      grid-template-columns: 1.3fr .9fr;
+    }
+
+    @media (max-width: 900px) {
+      .top { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: rgba(18, 25, 51, .9);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .row + .row { margin-top: 10px; }
+
+    button, select, input, textarea {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #6e8cff 0%, #5878f6 100%);
+      border: none;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #22315f;
+      border: 1px solid var(--line);
+    }
+
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+    }
+
+    button.danger {
+      background: #6a2230;
+      color: #ffe3e3;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(136,167,255,.15);
+      color: #dbe5ff;
+      border: 1px solid rgba(136,167,255,.35);
+      font-size: 13px;
+    }
+
+    .muted { color: var(--muted); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(185,194,227,.14);
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th { color: #cfdaff; font-weight: 700; }
+    td small { color: var(--muted); }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(167,243,208,.12);
+      color: #d1fae5;
+      border: 1px solid rgba(167,243,208,.24);
+      display: inline-block;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .right { margin-left: auto; }
+    .hidden { display: none; }
+    a.download-link { color: #dbe5ff; }
+    code.inline {
+      background: rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Task Tracking Viewer</h1>
+    <div class="sub">
+      ショートカットで iCloud Drive 上の CSV を更新しつつ、この画面では <strong>読み込み・見やすい確認・軽い編集・書き出し</strong> だけ担当します。<br>
+      まずは <span class="badge">CSV を読み込む</span> か、下の <span class="badge">サンプルデータ</span> を使って挙動を見てください。
+    </div>
+
+    <div class="grid top">
+      <section class="card">
+        <div class="section-title">
+          <h2>ファイル入出力</h2>
+          <span class="pill">iCloud Drive と併用向け</span>
+        </div>
+        <div class="row">
+          <input id="fileInput" type="file" accept=".csv,text/csv" />
+          <button id="loadSampleBtn" class="secondary">サンプル読込</button>
+          <button id="exportCsvBtn">CSV書き出し</button>
+          <button id="exportJsonBtn" class="secondary">JSON書き出し</button>
+        </div>
+        <div class="row muted">
+          iPhone では Files から CSV を選んで読み込み、編集後に書き出したファイルを iCloud Drive に保存する運用を想定しています。
+        </div>
+        <div class="row">
+          <label class="badge">列マッピング</label>
+          <input id="colStart" value="start" aria-label="start列" />
+          <input id="colEnd" value="end" aria-label="end列" />
+          <input id="colCategory" value="category" aria-label="category列" />
+          <input id="colTask" value="task" aria-label="task列" />
+          <input id="colNote" value="note" aria-label="note列" />
+        </div>
+        <div class="row muted" id="statusLine">まだデータがありません。</div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>実行中タスク</h2>
+          <span id="runningCount" class="pill">0 件</span>
+        </div>
+        <div id="runningTasks"></div>
+      </section>
+    </div>
+
+    <div class="two-col">
+      <section class="card">
+        <div class="section-title">
+          <h2>タスク一覧</h2>
+          <div class="toolbar">
+            <input id="searchInput" type="search" placeholder="カテゴリ / タスク / メモで検索" />
+            <select id="categoryFilter"><option value="">全カテゴリ</option></select>
+          </div>
+        </div>
+        <div id="tableWrap"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>選択行の編集</h2>
+          <span id="editHint" class="muted">一覧から 1 行選ぶ</span>
+        </div>
+        <div class="row">
+          <input id="editStart" placeholder="start" />
+          <input id="editEnd" placeholder="end" />
+        </div>
+        <div class="row">
+          <input id="editCategory" placeholder="category" />
+          <input id="editTask" placeholder="task" />
+        </div>
+        <div class="row">
+          <textarea id="editNote" placeholder="note"></textarea>
+        </div>
+        <div class="row">
+          <button id="saveEditBtn">この行を更新</button>
+          <button id="duplicateBtn" class="secondary">複製</button>
+          <button id="deleteBtn" class="danger">削除</button>
+        </div>
+        <div class="row muted">
+          ここで直した内容を CSV として保存し直し、必要ならショートカット側で読み戻す構成を想定しています。
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px;">
+      <div class="section-title">
+        <h2>ちいさなメモ</h2>
+        <span class="pill">この試作の役割</span>
+      </div>
+      <ul>
+        <li>ショートカット: iCloud Drive 上のログを直接書く本体</li>
+        <li>この Web UI: その CSV を読み込んで、見やすく確認して、必要なら軽く整える場所</li>
+        <li>完全な自動同期ではなく、<code class="inline">読む / 書き出す</code> を明示的にやるハイブリッド構成です</li>
+      </ul>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      rows: [],
+      selectedIndex: null,
+      filteredIndices: []
+    };
+
+    const els = {
+      fileInput: document.getElementById('fileInput'),
+      loadSampleBtn: document.getElementById('loadSampleBtn'),
+      exportCsvBtn: document.getElementById('exportCsvBtn'),
+      exportJsonBtn: document.getElementById('exportJsonBtn'),
+      statusLine: document.getElementById('statusLine'),
+      tableWrap: document.getElementById('tableWrap'),
+      runningTasks: document.getElementById('runningTasks'),
+      runningCount: document.getElementById('runningCount'),
+      searchInput: document.getElementById('searchInput'),
+      categoryFilter: document.getElementById('categoryFilter'),
+      editHint: document.getElementById('editHint'),
+      editStart: document.getElementById('editStart'),
+      editEnd: document.getElementById('editEnd'),
+      editCategory: document.getElementById('editCategory'),
+      editTask: document.getElementById('editTask'),
+      editNote: document.getElementById('editNote'),
+      saveEditBtn: document.getElementById('saveEditBtn'),
+      duplicateBtn: document.getElementById('duplicateBtn'),
+      deleteBtn: document.getElementById('deleteBtn'),
+      colStart: document.getElementById('colStart'),
+      colEnd: document.getElementById('colEnd'),
+      colCategory: document.getElementById('colCategory'),
+      colTask: document.getElementById('colTask'),
+      colNote: document.getElementById('colNote'),
+    };
+
+    const sampleCsv = `start,end,category,task,note
+2026-03-08 08:10,,朝ルーチン,起床,まだ進行中
+2026-03-08 08:30,2026-03-08 08:45,朝ルーチン,洗顔,
+2026-03-08 09:00,2026-03-08 09:50,仕事,設計メモ,task tracking 見直し
+2026-03-08 10:00,,家事,洗濯,回して放置`;
+
+    function getMap() {
+      return {
+        start: els.colStart.value.trim() || 'start',
+        end: els.colEnd.value.trim() || 'end',
+        category: els.colCategory.value.trim() || 'category',
+        task: els.colTask.value.trim() || 'task',
+        note: els.colNote.value.trim() || 'note',
+      };
+    }
+
+    function parseCsv(text) {
+      const lines = text.replace(/\r/g, '').split('\n').filter(Boolean);
+      if (lines.length === 0) return [];
+      const headers = splitCsvLine(lines[0]);
+      return lines.slice(1).map(line => {
+        const vals = splitCsvLine(line);
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+        return obj;
+      });
+    }
+
+    function splitCsvLine(line) {
+      const out = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          out.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      out.push(current);
+      return out;
+    }
+
+    function toCsv(rows) {
+      if (!rows.length) return 'start,end,category,task,note\n';
+      const map = getMap();
+      const headers = [map.start, map.end, map.category, map.task, map.note];
+      const escape = v => {
+        const s = String(v ?? '');
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      return [headers.join(',')].concat(rows.map(r => [
+        escape(r[map.start] ?? ''),
+        escape(r[map.end] ?? ''),
+        escape(r[map.category] ?? ''),
+        escape(r[map.task] ?? ''),
+        escape(r[map.note] ?? ''),
+      ].join(','))).join('\n');
+    }
+
+    function loadRows(rows) {
+      state.rows = rows;
+      state.selectedIndex = null;
+      refreshAll();
+    }
+
+    function refreshAll() {
+      renderStatus();
+      renderCategories();
+      renderRunning();
+      renderTable();
+      renderEditor();
+    }
+
+    function renderStatus() {
+      const map = getMap();
+      const running = state.rows.filter(r => !(r[map.end] || '').trim()).length;
+      els.statusLine.textContent = `${state.rows.length} 行 / 実行中 ${running} 件 / 列: ${Object.values(map).join(', ')}`;
+    }
+
+    function renderCategories() {
+      const map = getMap();
+      const cats = [...new Set(state.rows.map(r => (r[map.category] || '').trim()).filter(Boolean))].sort();
+      const current = els.categoryFilter.value;
+      els.categoryFilter.innerHTML = '<option value="">全カテゴリ</option>' + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      els.categoryFilter.value = cats.includes(current) ? current : '';
+    }
+
+    function renderRunning() {
+      const map = getMap();
+      const running = state.rows.filter(r => !(r[map.end] || '').trim());
+      els.runningCount.textContent = `${running.length} 件`;
+      if (!running.length) {
+        els.runningTasks.innerHTML = '<div class="empty">実行中タスクはありません。</div>';
+        return;
+      }
+      els.runningTasks.innerHTML = running.map(r => `
+        <div class="row" style="padding:10px 0; border-bottom:1px solid rgba(185,194,227,.14)">
+          <span class="pill">${escapeHtml(r[map.category] || '未分類')}</span>
+          <strong>${escapeHtml(r[map.task] || '無題')}</strong>
+          <span class="muted">開始: ${escapeHtml(r[map.start] || '-')}</span>
+          ${r[map.note] ? `<span class="muted">メモ: ${escapeHtml(r[map.note])}</span>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function getFilteredIndices() {
+      const q = els.searchInput.value.trim().toLowerCase();
+      const cat = els.categoryFilter.value;
+      const map = getMap();
+      return state.rows.map((row, idx) => ({ row, idx })).filter(({ row }) => {
+        const matchesCat = !cat || (row[map.category] || '') === cat;
+        const blob = [row[map.category], row[map.task], row[map.note], row[map.start], row[map.end]].join(' ').toLowerCase();
+        const matchesQ = !q || blob.includes(q);
+        return matchesCat && matchesQ;
+      }).map(x => x.idx);
+    }
+
+    function renderTable() {
+      const map = getMap();
+      const indices = getFilteredIndices();
+      state.filteredIndices = indices;
+      if (!indices.length) {
+        els.tableWrap.innerHTML = '<div class="empty">まだ表示できる行がありません。</div>';
+        return;
+      }
+
+      const rowsHtml = indices.map(idx => {
+        const r = state.rows[idx];
+        const selected = idx === state.selectedIndex ? ' style="background: rgba(136,167,255,.12);"' : '';
+        const open = !(r[map.end] || '').trim();
+        return `
+          <tr data-idx="${idx}"${selected}>
+            <td>${escapeHtml(r[map.start] || '')}</td>
+            <td>${escapeHtml(r[map.end] || '') || '<span class="pill">進行中</span>'}</td>
+            <td>${escapeHtml(r[map.category] || '')}</td>
+            <td><strong>${escapeHtml(r[map.task] || '')}</strong>${open ? '<br><small>open</small>' : ''}</td>
+            <td>${escapeHtml(r[map.note] || '')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      els.tableWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>開始</th><th>終了</th><th>カテゴリ</th><th>タスク</th><th>メモ</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
+
+      els.tableWrap.querySelectorAll('tbody tr').forEach(tr => {
+        tr.addEventListener('click', () => {
+          state.selectedIndex = Number(tr.dataset.idx);
+          renderTable();
+          renderEditor();
+        });
+      });
+    }
+
+    function renderEditor() {
+      const map = getMap();
+      const idx = state.selectedIndex;
+      if (idx == null || !state.rows[idx]) {
+        els.editHint.textContent = '一覧から 1 行選ぶ';
+        els.editStart.value = '';
+        els.editEnd.value = '';
+        els.editCategory.value = '';
+        els.editTask.value = '';
+        els.editNote.value = '';
+        return;
+      }
+      const row = state.rows[idx];
+      els.editHint.textContent = `行 ${idx + 1} を編集中`;
+      els.editStart.value = row[map.start] || '';
+      els.editEnd.value = row[map.end] || '';
+      els.editCategory.value = row[map.category] || '';
+      els.editTask.value = row[map.task] || '';
+      els.editNote.value = row[map.note] || '';
+    }
+
+    function saveEditorToRow() {
+      const idx = state.selectedIndex;
+      if (idx == null || !state.rows[idx]) return;
+      const map = getMap();
+      state.rows[idx][map.start] = els.editStart.value;
+      state.rows[idx][map.end] = els.editEnd.value;
+      state.rows[idx][map.category] = els.editCategory.value;
+      state.rows[idx][map.task] = els.editTask.value;
+      state.rows[idx][map.note] = els.editNote.value;
+      refreshAll();
+    }
+
+    function download(name, type, content) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    els.fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      loadRows(parseCsv(text));
+    });
+
+    els.loadSampleBtn.addEventListener('click', () => loadRows(parseCsv(sampleCsv)));
+    els.exportCsvBtn.addEventListener('click', () => download('task_log_edited.csv', 'text/csv;charset=utf-8', toCsv(state.rows)));
+    els.exportJsonBtn.addEventListener('click', () => download('task_log_edited.json', 'application/json;charset=utf-8', JSON.stringify(state.rows, null, 2)));
+    els.searchInput.addEventListener('input', renderTable);
+    els.categoryFilter.addEventListener('change', renderTable);
+    [els.colStart, els.colEnd, els.colCategory, els.colTask, els.colNote].forEach(el => el.addEventListener('input', refreshAll));
+    els.saveEditBtn.addEventListener('click', saveEditorToRow);
+    els.duplicateBtn.addEventListener('click', () => {
+      const idx = state.selectedIndex;
+      if (idx == null || !state.rows[idx]) return;
+      const copy = structuredClone(state.rows[idx]);
+      state.rows.splice(idx + 1, 0, copy);
+      state.selectedIndex = idx + 1;
+      refreshAll();
+    });
+    els.deleteBtn.addEventListener('click', () => {
+      const idx = state.selectedIndex;
+      if (idx == null || !state.rows[idx]) return;
+      state.rows.splice(idx, 1);
+      state.selectedIndex = null;
+      refreshAll();
+    });
+
+    loadRows(parseCsv(sampleCsv));
+  </script>
+</body>
+</html>
